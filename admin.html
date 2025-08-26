@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Admin Panel</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="icon" href="favicon.png" type="image/png">
+</head>
+<body>
+
+  <!-- Topbar -->
+  <div class="topbar">
+    <div class="logo">Admin Panel</div>
+    <div class="actions">
+      <button id="btnDashboard">⬅️ Back to Dashboard</button>
+      <button id="btnSignOut">Logout</button>
+    </div>
+  </div>
+
+  <div class="admin-container">
+    <h2>Administration</h2>
+
+    <!-- User Management Section -->
+    <div class="admin-section">
+      <h3>User Management</h3>
+      <div>
+        <input type="text" id="newUsername" placeholder="Username">
+        <input type="password" id="newPassword" placeholder="Password">
+        <select id="newRole">
+          <option value="user">User</option>
+          <option value="admin">Admin</option>
+          <option value="viewer">Viewer</option>
+        </select>
+        <button class="create" id="btnCreateUser">Create User</button>
+      </div>
+
+      <h4>Existing Users</h4>
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>Username</th>
+            <th>Role</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="usersTable"></tbody>
+      </table>
+    </div>
+
+    <!-- Location Management Section -->
+    <div class="admin-section">
+      <h3>Location Management</h3>
+      <div>
+        <input type="text" id="newLocation" placeholder="Location Name">
+        <button class="create" id="btnCreateLocation">Add Location</button>
+      </div>
+
+      <label style="display:block; margin:10px 0;">
+        Search Locations: <input type="text" id="searchLocationAdmin" placeholder="Type location...">
+      </label>
+
+      <h4>Existing Locations</h4>
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>Location Name</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="locationsTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Confirm Delete Modal -->
+  <div id="confirmModal" class="modal hidden">
+    <div class="modal-content">
+      <h3 id="confirmMsg">Are you sure?</h3>
+      <div style="margin-top:15px; display:flex; justify-content:space-between;">
+        <button id="confirmYes" style="background:#e53935;color:white;">Yes</button>
+        <button id="confirmNo" style="background:#ccc;">No</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Script -->
+  <script type="module" src="admin.js"></script>
+</body>
+</html>

@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Trip Meter Log - Dashboard</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="favicon.png" type="image/png">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+  <!-- Topbar -->
+  <div class="topbar">
+    <div class="logo">
+      <img src="headline.png" alt="Logo" height="30" />
+      <span>🚚 Trip Meter Log</span>
+    </div>
+    <div class="actions">
+      <span id="whoami"></span>
+      <button id="btnExport">Export</button>
+      <button id="btnAdminPage" class="hidden">Admin Page</button>
+      <button id="btnSignOut">Sign Out</button>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="filters">
+    <label>From: <input type="date" id="filterStart"></label>
+    <label>To: <input type="date" id="filterEnd"></label>
+    <button id="btnFilterDate">Filter by Date</button>
+
+    <input type="text" id="searchLocation" placeholder="Search by Location">
+    <button id="btnSearchLoc">Search</button>
+  </div>
+
+  <!-- Add Row -->
+  <button id="btnAddRow" class="btn-green">+ Add Row</button>
+
+  <!-- Table -->
+  <div class="table-container">
+    <table id="tripTable">
+      <thead>
+        <tr>
+          <th id="thDate">Date</th>
+          <th id="thStartTime">Start Time</th>
+          <th id="thStartMeter">Start Meter</th>
+          <th id="thEndTime">End Time</th>
+          <th id="thEndMeter">End Meter</th>
+          <th id="thTotal">Total Meter</th>
+          <th id="thLocations">Locations</th>
+          <th id="thUser" class="hidden">User</th>
+          <th id="thActions" class="hidden">Actions</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <!-- Locations Modal -->
+  <div id="locationsModal" class="modal hidden">
+    <div class="modal-content">
+      <h3>Select Locations</h3>
+      
+      <div id="locationsOptions" style="max-height:200px; overflow-y:auto;"></div>
+      <button id="btnLocApply">Apply</button>
+      <button id="btnLocCancel">Cancel</button>
+    </div>
+  </div>
+
+  <!-- Confirm Delete Modal -->
+  <div id="confirmModal" class="modal hidden">
+    <div class="modal-content">
+      <h3>Confirm Delete</h3>
+      <p id="confirmMsg"></p>
+      <button id="confirmYes">Yes, Delete</button>
+      <button id="confirmNo">Cancel</button>
+    </div>
+  </div>
+
+  <script type="module" src="dashboard.js"></script>
+</body>
+</html>

@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Login - Trip Meter Log</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="icon" href="favicon.png" type="image/png">
+  <style>
+    body {
+      background: #f5f7fa;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    .login-container {
+      max-width: 360px;
+      width: 100%;
+      background: white;
+      padding: 30px 25px;
+      border-radius: 10px;
+      box-shadow: 0 0 12px rgba(0,0,0,0.1);
+      text-align: center;
+    }
+    .login-container img {
+      width: 80px;
+      margin-bottom: 10px;
+    }
+    .login-container h2 {
+      margin-bottom: 20px;
+      color: #1e88e5;
+      font-size: 22px;
+    }
+    .input-group {
+      position: relative;
+      margin-bottom: 15px;
+    }
+    .input-group input {
+      width: 100%;
+      padding: 10px 40px 10px 12px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+    .input-group .toggle-password {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      cursor: pointer;
+      font-size: 14px;
+      color: #666;
+    }
+    .login-container button {
+      width: 100%;
+      padding: 12px;
+      background: #1e88e5;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 15px;
+      cursor: pointer;
+      margin-top: 5px;
+    }
+    .login-container button:hover {
+      background: #1565c0;
+    }
+    .login-footer {
+      text-align: center;
+      margin-top: 15px;
+      font-size: 13px;
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-container">
+    <!-- Company Logo -->
+    <img src="logo1.png" alt="Company Logo" />
+    <h2>🚚 Trip Meter Log</h2>
+
+    <div class="input-group">
+      <input type="text" id="username" placeholder="Username" autofocus />
+    </div>
+    <div class="input-group">
+      <input type="password" id="password" placeholder="Password" />
+      <span class="toggle-password" id="togglePassword">👁️</span>
+    </div>
+    <button id="btnLogin">Login</button>
+    <div class="login-footer">© 2025 Trip Meter Log</div>
+    <h6>Version 5.6 </h6>
+  </div>
+
+  <script type="module">
+    import { db } from "./firebase.js";
+    import { collection, query, where, getDocs } 
+      from "https://www.gstatic.com/firebasejs/10.12.3/firebase-firestore.js";
+
+    const usernameInput = document.getElementById("username");
+    const passwordInput = document.getElementById("password");
+    const btnLogin = document.getElementById("btnLogin");
+    const togglePassword = document.getElementById("togglePassword");
+
+    // Toggle show/hide password
+    togglePassword.addEventListener("click", () => {
+      if (passwordInput.type === "password") {
+        passwordInput.type = "text";
+        togglePassword.textContent = "🙈";
+      } else {
+        passwordInput.type = "password";
+        togglePassword.textContent = "👁️";
+      }
+    });
+
+    // Enter navigation
+    usernameInput.addEventListener("keydown", e => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        passwordInput.focus();
+      }
+    });
+    passwordInput.addEventListener("keydown", e => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        login();
+      }
+    });
+
+    btnLogin.addEventListener("click", login);
+
+    async function login() {
+      const username = usernameInput.value.trim();
+      const password = passwordInput.value.trim();
+
+      if (!username || !password) {
+        alert("Please enter username and password");
+        return;
+      }
+
+      const q = query(
+        collection(db, "users"),
+        where("username", "==", username),
+        where("password", "==", password)
+      );
+      const snap = await getDocs(q);
+
+      if (snap.empty) {
+        alert("Invalid credentials");
+        return;
+      }
+
+      const user = snap.docs[0].data();
+      localStorage.setItem("username", user.username);
+      localStorage.setItem("userRole", user.role);
+
+      window.location.href = "dashboard.html";
+    }
+  </script>
+</body>
+</html>
