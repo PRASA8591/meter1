@@ -7,24 +7,50 @@ import {
   getDocs
 } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-firestore.js";
 
-const btnLogin = document.getElementById("btnLogin");
+const loginForm = document.getElementById("loginForm");
 const usernameInput = document.getElementById("username");
 const passwordInput = document.getElementById("password");
+const rememberMeInput = document.getElementById("rememberMe");
+const togglePassword = document.getElementById("togglePassword");
+const forgotPasswordLink = document.getElementById("forgotPassword");
 const errorBox = document.getElementById("loginError");
 
-// ---------------- LOGIN ----------------
-btnLogin.addEventListener("click", async () => {
-  errorBox.textContent = ""; // clear old errors
+function setError(message) {
+  errorBox.textContent = message;
+  errorBox.classList.toggle("visible", Boolean(message));
+}
+
+function loadRememberedUsername() {
+  const remembered = localStorage.getItem("rememberedUsername");
+  if (remembered) {
+    usernameInput.value = remembered;
+    rememberMeInput.checked = true;
+  }
+}
+
+function togglePasswordVisibility() {
+  if (passwordInput.type === "password") {
+    passwordInput.type = "text";
+    togglePassword.textContent = "🙈";
+  } else {
+    passwordInput.type = "password";
+    togglePassword.textContent = "👁️";
+  }
+}
+
+async function login(event) {
+  event.preventDefault();
+  setError("");
+
   const username = usernameInput.value.trim();
   const password = passwordInput.value.trim();
 
   if (!username || !password) {
-    errorBox.textContent = "⚠ Please enter username and password.";
+    setError("Please enter username and password.");
     return;
   }
 
   try {
-    // find matching user in Firestore
     const q = query(
       collection(db, "users"),
       where("username", "==", username),
@@ -33,21 +59,38 @@ btnLogin.addEventListener("click", async () => {
     const snap = await getDocs(q);
 
     if (snap.empty) {
-      errorBox.textContent = "❌ Invalid username or password.";
+      setError("Invalid username or password.");
       return;
     }
 
-    // we found a user
     const userDoc = snap.docs[0].data();
-
-    // store session
     localStorage.setItem("username", userDoc.username);
     localStorage.setItem("userRole", userDoc.role);
 
-    // redirect to dashboard
+    if (rememberMeInput.checked) {
+      localStorage.setItem("rememberedUsername", userDoc.username);
+    } else {
+      localStorage.removeItem("rememberedUsername");
+    }
+
     window.location.href = "dashboard.html";
   } catch (err) {
     console.error("Login error:", err);
-    errorBox.textContent = "⚠ Login failed. Please try again.";
+    setError("Login failed. Please try again later.");
+  }
+}
+
+loginForm.addEventListener("submit", login);
+rememberMeInput.addEventListener("change", () => {
+  if (!rememberMeInput.checked) {
+    localStorage.removeItem("rememberedUsername");
   }
 });
+
+togglePassword.addEventListener("click", togglePasswordVisibility);
+forgotPasswordLink.addEventListener("click", (event) => {
+  event.preventDefault();
+  alert("Please contact support@prasatek.site to reset your password.");
+});
+
+loadRememberedUsername();

@@ -2,142 +2,323 @@
 import { db } from "./firebase.js";
 import {
   collection,
-  addDoc,
+  query,
+  where,
+  orderBy,
   getDocs,
+  addDoc,
+  updateDoc,
   deleteDoc,
-  doc
+  doc,
+  serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-firestore.js";
 
 const btnDashboard = document.getElementById("btnDashboard");
 const btnSignOut = document.getElementById("btnSignOut");
-
-// User management
+const btnRefreshAdmin = document.getElementById("btnRefreshAdmin");
+const btnExportTrips = document.getElementById("btnExportTrips");
 const btnCreateUser = document.getElementById("btnCreateUser");
 const newUsername = document.getElementById("newUsername");
 const newPassword = document.getElementById("newPassword");
 const newRole = document.getElementById("newRole");
 const usersTable = document.getElementById("usersTable");
-
-// Location management
+const searchUserAdmin = document.getElementById("searchUserAdmin");
 const btnCreateLocation = document.getElementById("btnCreateLocation");
 const newLocation = document.getElementById("newLocation");
 const locationsTable = document.getElementById("locationsTable");
 const searchLocationAdmin = document.getElementById("searchLocationAdmin");
-
-// Confirm modal
+const filterTripUser = document.getElementById("filterTripUser");
+const searchTripLocation = document.getElementById("searchTripLocation");
+const filterTripStart = document.getElementById("filterTripStart");
+const filterTripEnd = document.getElementById("filterTripEnd");
+const btnFilterTrips = document.getElementById("btnFilterTrips");
+const tripsTable = document.getElementById("tripsTable");
+const countUsers = document.getElementById("countUsers");
+const countLocations = document.getElementById("countLocations");
+const countTrips = document.getElementById("countTrips");
+const countMeters = document.getElementById("countMeters");
 const confirmModal = document.getElementById("confirmModal");
 const confirmMsg = document.getElementById("confirmMsg");
 const confirmYes = document.getElementById("confirmYes");
 const confirmNo = document.getElementById("confirmNo");
 let deleteCallback = null;
 
-// ---------------- Init User ----------------
 function initUser() {
   const role = localStorage.getItem("userRole");
   if (role !== "admin") {
-    // 🚫 Only admin can access this page
     window.location.href = "index.html";
   }
 }
 initUser();
 
-// ---------------- Confirm Modal ----------------
 function showConfirm(message, callback) {
   confirmMsg.textContent = message;
   confirmModal.classList.remove("hidden");
   deleteCallback = callback;
 }
+
 confirmYes.addEventListener("click", () => {
   confirmModal.classList.add("hidden");
   if (deleteCallback) deleteCallback();
   deleteCallback = null;
 });
+
 confirmNo.addEventListener("click", () => {
   confirmModal.classList.add("hidden");
   deleteCallback = null;
 });
 
-// ---------------- Users ----------------
+async function loadSummary() {
+  const [usersSnap, locationsSnap, tripsSnap] = await Promise.all([
+    getDocs(collection(db, "users")),
+    getDocs(collection(db, "locations")),
+    getDocs(collection(db, "trips"))
+  ]);
+
+  const totalMeters = tripsSnap.docs.reduce((sum, d) => sum + (Number(d.data().totalMeter) || 0), 0);
+
+  countUsers.textContent = usersSnap.size;
+  countLocations.textContent = locationsSnap.size;
+  countTrips.textContent = tripsSnap.size;
+  countMeters.textContent = totalMeters;
+}
+
 async function loadUsers() {
   usersTable.innerHTML = "";
-  const snap = await getDocs(collection(db, "users"));
+  const term = searchUserAdmin.value.trim().toLowerCase();
+  const snap = await getDocs(query(collection(db, "users"), orderBy("username", "asc")));
+
   snap.forEach((docSnap) => {
-    const u = docSnap.data();
+    const user = docSnap.data();
+    if (term && !user.username.toLowerCase().includes(term)) return;
+
     const tr = document.createElement("tr");
+    tr.dataset.id = docSnap.id;
     tr.innerHTML = `
-      <td>${u.username}</td>
-      <td>${u.role}</td>
-      <td><button class="delete">Delete</button></td>
+      <td>${user.username}</td>
+      <td>
+        <select class="userRole">
+          <option value="user">User</option>
+          <option value="admin">Admin</option>
+          <option value="viewer">Viewer</option>
+        </select>
+      </td>
+      <td><input type="password" class="passwordInput" placeholder="New password"></td>
+      <td class="actions">
+        <button class="saveUser">Save</button>
+        <button class="deleteUser">Delete</button>
+      </td>
     `;
-    tr.querySelector(".delete").onclick = () =>
-      showConfirm(`Delete user "${u.username}"?`, async () => {
+
+    const roleSelect = tr.querySelector(".userRole");
+    roleSelect.value = user.role || "user";
+
+    tr.querySelector(".saveUser").addEventListener("click", async () => {
+      const newRoleValue = roleSelect.value;
+      const passwordValue = tr.querySelector(".passwordInput").value.trim();
+      const payload = { role: newRoleValue };
+      if (passwordValue) payload.password = passwordValue;
+      await updateDoc(doc(db, "users", docSnap.id), payload);
+      tr.querySelector(".passwordInput").value = "";
+      loadUsers();
+      loadSummary();
+    });
+
+    tr.querySelector(".deleteUser").addEventListener("click", () =>
+      showConfirm(`Delete user "${user.username}"?`, async () => {
         await deleteDoc(doc(db, "users", docSnap.id));
         loadUsers();
-      });
+        loadSummary();
+      })
+    );
+
     usersTable.appendChild(tr);
   });
 }
 
 btnCreateUser.addEventListener("click", async () => {
-  if (!newUsername.value || !newPassword.value) return alert("Fill all fields");
+  const username = newUsername.value.trim();
+  const password = newPassword.value.trim();
+  const role = newRole.value;
+
+  if (!username || !password) {
+    return alert("Fill all fields");
+  }
+
+  const existing = await getDocs(query(collection(db, "users"), where("username", "==", username)));
+  if (!existing.empty) {
+    return alert("Username already exists.");
+  }
+
   await addDoc(collection(db, "users"), {
-    username: newUsername.value,
-    password: newPassword.value,
-    role: newRole.value,
+    username,
+    password,
+    role,
+    createdAt: serverTimestamp()
   });
+
   newUsername.value = "";
   newPassword.value = "";
   newRole.value = "user";
   loadUsers();
+  loadSummary();
 });
 
-// ---------------- Locations ----------------
 async function loadLocations() {
   locationsTable.innerHTML = "";
-  const snap = await getDocs(collection(db, "locations"));
+  const term = searchLocationAdmin.value.trim().toLowerCase();
+  const snap = await getDocs(query(collection(db, "locations"), orderBy("name", "asc")));
+
   snap.forEach((docSnap) => {
-    const l = docSnap.data();
+    const location = docSnap.data();
+    if (term && !location.name.toLowerCase().includes(term)) return;
+
     const tr = document.createElement("tr");
+    tr.dataset.id = docSnap.id;
     tr.innerHTML = `
-      <td>${l.name}</td>
-      <td><button class="delete">Delete</button></td>
+      <td><input type="text" class="locationName" value="${location.name}"></td>
+      <td class="actions">
+        <button class="saveLocation">Save</button>
+        <button class="deleteLocation">Delete</button>
+      </td>
     `;
-    tr.querySelector(".delete").onclick = () =>
-      showConfirm(`Delete location "${l.name}"?`, async () => {
+
+    tr.querySelector(".saveLocation").addEventListener("click", async () => {
+      const nextName = tr.querySelector(".locationName").value.trim();
+      if (!nextName) {
+        return alert("Location name cannot be empty.");
+      }
+
+      const duplicate = await getDocs(query(collection(db, "locations"), where("name", "==", nextName)));
+      if (!duplicate.empty && duplicate.docs.some(d => d.id !== docSnap.id)) {
+        return alert("Location already exists.");
+      }
+
+      await updateDoc(doc(db, "locations", docSnap.id), { name: nextName });
+      loadLocations();
+      loadSummary();
+    });
+
+    tr.querySelector(".deleteLocation").addEventListener("click", () =>
+      showConfirm(`Delete location "${location.name}"?`, async () => {
         await deleteDoc(doc(db, "locations", docSnap.id));
         loadLocations();
-      });
+        loadSummary();
+      })
+    );
+
     locationsTable.appendChild(tr);
   });
 }
 
 btnCreateLocation.addEventListener("click", async () => {
-  if (!newLocation.value) return alert("Enter a location name");
+  const locationName = newLocation.value.trim();
+  if (!locationName) {
+    return alert("Enter a location name");
+  }
+
+  const existing = await getDocs(query(collection(db, "locations"), where("name", "==", locationName)));
+  if (!existing.empty) {
+    return alert("Location already exists.");
+  }
+
   await addDoc(collection(db, "locations"), {
-    name: newLocation.value,
+    name: locationName,
+    createdAt: serverTimestamp()
   });
+
   newLocation.value = "";
   loadLocations();
+  loadSummary();
 });
 
-// ---------------- Location Search ----------------
-searchLocationAdmin.addEventListener("input", () => {
-  const term = searchLocationAdmin.value.toLowerCase();
-  Array.from(locationsTable.children).forEach((tr) => {
-    const name = tr.children[0].textContent.toLowerCase();
-    tr.style.display = name.includes(term) ? "" : "none";
+searchUserAdmin.addEventListener("input", () => loadUsers());
+searchLocationAdmin.addEventListener("input", () => loadLocations());
+
+async function loadTrips() {
+  tripsTable.innerHTML = "";
+  const userTerm = filterTripUser.value.trim().toLowerCase();
+  const locationTerm = searchTripLocation.value.trim().toLowerCase();
+  const start = filterTripStart.value;
+  const end = filterTripEnd.value;
+
+  const snap = await getDocs(query(collection(db, "trips"), orderBy("date", "desc")));
+
+  snap.forEach((docSnap) => {
+    const trip = docSnap.data();
+    if (userTerm && !(trip.createdBy || "").toLowerCase().includes(userTerm)) return;
+    if (locationTerm && !((trip.locations || []).some(loc => loc.toLowerCase().includes(locationTerm)))) return;
+    if (start && trip.date < start) return;
+    if (end && trip.date > end) return;
+
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${trip.date || ""}</td>
+      <td>${trip.startTime || ""}</td>
+      <td>${trip.endTime || ""}</td>
+      <td>${trip.startMeter ?? ""}</td>
+      <td>${trip.endMeter ?? ""}</td>
+      <td>${trip.totalMeter ?? ""}</td>
+      <td>${(trip.locations || []).join(", ")}</td>
+      <td>${trip.createdBy || ""}</td>
+      <td class="actions"><button class="deleteTrip">Delete</button></td>
+    `;
+
+    tr.querySelector(".deleteTrip").addEventListener("click", () =>
+      showConfirm("Delete this trip entry?", async () => {
+        await deleteDoc(doc(db, "trips", docSnap.id));
+        loadTrips();
+        loadSummary();
+      })
+    );
+
+    tripsTable.appendChild(tr);
   });
+}
+
+btnFilterTrips.addEventListener("click", loadTrips);
+
+btnExportTrips.addEventListener("click", async () => {
+  const snap = await getDocs(query(collection(db, "trips"), orderBy("date", "asc")));
+  const rows = [["Date", "Start Time", "End Time", "Start Meter", "End Meter", "Total Meter", "Locations", "Created By"]];
+
+  snap.forEach((docSnap) => {
+    const trip = docSnap.data();
+    rows.push([
+      trip.date || "",
+      trip.startTime || "",
+      trip.endTime || "",
+      trip.startMeter ?? "",
+      trip.endMeter ?? "",
+      trip.totalMeter ?? "",
+      (trip.locations || []).join(", "),
+      trip.createdBy || ""
+    ]);
+  });
+
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Trip Log");
+  XLSX.writeFile(wb, "Admin_Trip_Log.xlsx");
 });
 
-// ---------------- Nav ----------------
+btnRefreshAdmin.addEventListener("click", () => {
+  loadSummary();
+  loadUsers();
+  loadLocations();
+  loadTrips();
+});
+
 btnDashboard.addEventListener("click", () => {
   window.location.href = "dashboard.html";
 });
+
 btnSignOut.addEventListener("click", () => {
   localStorage.clear();
   window.location.href = "index.html";
 });
 
-// ---------------- Init ----------------
+loadSummary();
 loadUsers();
 loadLocations();
+loadTrips();

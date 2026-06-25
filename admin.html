@@ -1,30 +1,50 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Admin Panel</title>
   <link rel="stylesheet" href="style.css" />
   <link rel="icon" href="favicon.png" type="image/png">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
 
-  <!-- Topbar -->
   <div class="topbar">
     <div class="logo">Admin Panel</div>
     <div class="actions">
-      <button id="btnDashboard">⬅️ Back to Dashboard</button>
+      <button id="btnDashboard">⬅️ Dashboard</button>
+      <button id="btnRefreshAdmin">Refresh</button>
+      <button id="btnExportTrips">Export Trips</button>
       <button id="btnSignOut">Logout</button>
     </div>
   </div>
 
   <div class="admin-container">
-    <h2>Administration</h2>
+    <h2>Administration Console</h2>
 
-    <!-- User Management Section -->
+    <div class="admin-summary">
+      <div class="admin-card">
+        <div class="card-label">Users</div>
+        <div id="countUsers" class="card-value">0</div>
+      </div>
+      <div class="admin-card">
+        <div class="card-label">Locations</div>
+        <div id="countLocations" class="card-value">0</div>
+      </div>
+      <div class="admin-card">
+        <div class="card-label">Trips</div>
+        <div id="countTrips" class="card-value">0</div>
+      </div>
+      <div class="admin-card">
+        <div class="card-label">Total Meter</div>
+        <div id="countMeters" class="card-value">0</div>
+      </div>
+    </div>
+
     <div class="admin-section">
       <h3>User Management</h3>
-      <div>
+      <div class="admin-row">
         <input type="text" id="newUsername" placeholder="Username">
         <input type="password" id="newPassword" placeholder="Password">
         <select id="newRole">
@@ -35,12 +55,17 @@
         <button class="create" id="btnCreateUser">Create User</button>
       </div>
 
+      <div class="admin-row">
+        <input type="text" id="searchUserAdmin" placeholder="Search users...">
+      </div>
+
       <h4>Existing Users</h4>
       <table class="admin-table">
         <thead>
           <tr>
             <th>Username</th>
             <th>Role</th>
+            <th>New Password</th>
             <th>Actions</th>
           </tr>
         </thead>
@@ -48,17 +73,16 @@
       </table>
     </div>
 
-    <!-- Location Management Section -->
     <div class="admin-section">
       <h3>Location Management</h3>
-      <div>
+      <div class="admin-row">
         <input type="text" id="newLocation" placeholder="Location Name">
         <button class="create" id="btnCreateLocation">Add Location</button>
       </div>
 
-      <label style="display:block; margin:10px 0;">
-        Search Locations: <input type="text" id="searchLocationAdmin" placeholder="Type location...">
-      </label>
+      <div class="admin-row">
+        <input type="text" id="searchLocationAdmin" placeholder="Search locations...">
+      </div>
 
       <h4>Existing Locations</h4>
       <table class="admin-table">
@@ -71,9 +95,37 @@
         <tbody id="locationsTable"></tbody>
       </table>
     </div>
+
+    <div class="admin-section">
+      <h3>Trip Review</h3>
+      <div class="admin-row">
+        <input type="text" id="filterTripUser" placeholder="Filter by user">
+        <input type="text" id="searchTripLocation" placeholder="Filter by location">
+        <input type="date" id="filterTripStart">
+        <input type="date" id="filterTripEnd">
+        <button class="create" id="btnFilterTrips">Apply Filters</button>
+      </div>
+
+      <h4>Recent Trips</h4>
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Start</th>
+            <th>End</th>
+            <th>Start Meter</th>
+            <th>End Meter</th>
+            <th>Total Meter</th>
+            <th>Locations</th>
+            <th>User</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="tripsTable"></tbody>
+      </table>
+    </div>
   </div>
 
-  <!-- Confirm Delete Modal -->
   <div id="confirmModal" class="modal hidden">
     <div class="modal-content">
       <h3 id="confirmMsg">Are you sure?</h3>
@@ -84,7 +136,6 @@
     </div>
   </div>
 
-  <!-- Script -->
   <script type="module" src="admin.js"></script>
   <script src="autoLogout.js"></script>
 </body>
