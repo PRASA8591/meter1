@@ -75,6 +75,43 @@ body {
   font-size: 14px;
 }
 
+.dashboard-summary,
+.dashboard-insights {
+  margin: 15px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.summary-card,
+.insight-card {
+  padding: 16px;
+  background: #ffffff;
+  border: 1px solid #dbe6f7;
+  border-radius: 14px;
+  box-shadow: 0 8px 24px rgba(13, 71, 161, 0.06);
+}
+
+.summary-label,
+.insight-title {
+  font-size: 0.95rem;
+  color: #556b98;
+  margin-bottom: 8px;
+}
+
+.summary-value,
+.insight-value {
+  font-size: 1.9rem;
+  font-weight: 700;
+  color: #0d47a1;
+}
+
+.insight-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
 .filters input[type="date"],
 .filters input[type="text"] {
   padding: 5px;

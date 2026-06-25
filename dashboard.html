@@ -17,9 +17,37 @@
     </div>
     <div class="actions">
       <span id="whoami"></span>
-      <button id="btnExport">Export</button>
+      <button id="btnExport">Export All</button>
+      <button id="btnExportFiltered">Export Filtered</button>
       <button id="btnAdminPage" class="hidden">Admin Page</button>
       <button id="btnSignOut">Sign Out</button>
+    </div>
+  </div>
+
+  <div class="dashboard-summary">
+    <div class="summary-card">
+      <div class="summary-label">Total Trips</div>
+      <div id="countTotalTrips" class="summary-value">0</div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-label">Total Meter</div>
+      <div id="countTotalMeter" class="summary-value">0</div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-label">Avg Meter</div>
+      <div id="countAvgMeter" class="summary-value">0</div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-label">Today Trips</div>
+      <div id="countTodayTrips" class="summary-value">0</div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-label">Unique Locations</div>
+      <div id="countUniqueLocations" class="summary-value">0</div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-label">Top Location</div>
+      <div id="topLocation" class="summary-value">—</div>
     </div>
   </div>
 
@@ -27,10 +55,27 @@
   <div class="filters">
     <label>From: <input type="date" id="filterStart"></label>
     <label>To: <input type="date" id="filterEnd"></label>
+    <label>User: <input type="text" id="searchUser" placeholder="Search by User"></label>
     <button id="btnFilterDate">Filter by Date</button>
+    <button id="btnClearFilters">Clear Filters</button>
 
     <input type="text" id="searchLocation" placeholder="Search by Location">
     <button id="btnSearchLoc">Search</button>
+  </div>
+
+  <div class="dashboard-insights">
+    <div class="insight-card">
+      <div class="insight-title">Top Location</div>
+      <div id="topLocation" class="insight-value">—</div>
+    </div>
+    <div class="insight-card">
+      <div class="insight-title">Top Driver</div>
+      <div id="topUser" class="insight-value">—</div>
+    </div>
+    <div class="insight-card">
+      <div class="insight-title">Trips This Week</div>
+      <div id="countWeekTrips" class="insight-value">0</div>
+    </div>
   </div>
 
   <!-- Add Row -->

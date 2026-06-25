@@ -15,9 +15,11 @@ const whoami = document.getElementById("whoami");
 // Filters
 const btnFilterDate = document.getElementById("btnFilterDate");
 const btnSearchLoc = document.getElementById("btnSearchLoc");
+const btnClearFilters = document.getElementById("btnClearFilters");
 const filterStart = document.getElementById("filterStart");
 const filterEnd = document.getElementById("filterEnd");
 const searchLocation = document.getElementById("searchLocation");
+const searchUser = document.getElementById("searchUser");
 
 // Modal refs
 const modal = document.getElementById("locationsModal");
@@ -36,6 +38,18 @@ let locationsCache = [];
 let modalRow = null;
 let columnWidths = {}; // loaded from Firestore
 let deleteCallback = null;
+let currentFilteredTrips = [];
+
+const countTotalTrips = document.getElementById("countTotalTrips");
+const countTotalMeter = document.getElementById("countTotalMeter");
+const countAvgMeter = document.getElementById("countAvgMeter");
+const countTodayTrips = document.getElementById("countTodayTrips");
+const countUniqueLocations = document.getElementById("countUniqueLocations");
+const countUniqueUsers = document.getElementById("countUniqueUsers");
+const topLocation = document.getElementById("topLocation");
+const topUser = document.getElementById("topUser");
+const countWeekTrips = document.getElementById("countWeekTrips");
+const btnExportFiltered = document.getElementById("btnExportFiltered");
 
 // --- Confirm Modal ---
 function showDeleteConfirm(callback) {
@@ -89,7 +103,83 @@ async function loadLocations() {
 }
 
 
-// --- Load Column Widths (from Firestore) ---
+// --- Dashboard summary helpers ---
+function getWeekStart(date) {
+  const copy = new Date(date);
+  const day = copy.getDay();
+  copy.setDate(copy.getDate() - day + 1);
+  copy.setHours(0, 0, 0, 0);
+  return copy;
+}
+
+function parseDateString(dateString) {
+  if (!dateString) return null;
+  const [year, month, day] = dateString.split("-").map(Number);
+  return new Date(year, month - 1, day);
+}
+
+function buildTripSummary(trips) {
+  const totalTrips = trips.length;
+  const totalMeter = trips.reduce((sum, trip) => sum + (Number(trip.totalMeter) || 0), 0);
+  const avgMeter = totalTrips ? Math.round(totalMeter / totalTrips) : 0;
+  const today = new Date();
+  const todayIso = today.toISOString().slice(0, 10);
+  const todayTrips = trips.filter(trip => trip.date === todayIso).length;
+
+  const uniqueLocations = new Set();
+  const uniqueUsers = new Set();
+  const locationCount = {};
+  const userCount = {};
+  let weekTrips = 0;
+  const weekStart = getWeekStart(today);
+
+  trips.forEach(trip => {
+    (trip.locations || []).forEach(loc => {
+      const name = (loc || "").trim();
+      if (name) {
+        uniqueLocations.add(name);
+        locationCount[name] = (locationCount[name] || 0) + 1;
+      }
+    });
+    if (trip.createdBy) {
+      uniqueUsers.add(trip.createdBy);
+      userCount[trip.createdBy] = (userCount[trip.createdBy] || 0) + 1;
+    }
+    const tripDate = parseDateString(trip.date);
+    if (tripDate && tripDate >= weekStart) {
+      weekTrips += 1;
+    }
+  });
+
+  const bestLocation = Object.keys(locationCount).sort((a, b) => locationCount[b] - locationCount[a])[0] || "—";
+  const bestUser = Object.keys(userCount).sort((a, b) => userCount[b] - userCount[a])[0] || "—";
+
+  return {
+    totalTrips,
+    totalMeter,
+    avgMeter,
+    todayTrips,
+    uniqueLocations: uniqueLocations.size,
+    uniqueUsers: uniqueUsers.size,
+    bestLocation,
+    bestUser,
+    weekTrips
+  };
+}
+
+function updateDashboardSummary(trips) {
+  const summary = buildTripSummary(trips);
+  countTotalTrips.textContent = summary.totalTrips;
+  countTotalMeter.textContent = summary.totalMeter;
+  countAvgMeter.textContent = summary.avgMeter;
+  countTodayTrips.textContent = summary.todayTrips;
+  countUniqueLocations.textContent = summary.uniqueLocations;
+  countUniqueUsers.textContent = summary.uniqueUsers;
+  topLocation.textContent = summary.bestLocation;
+  topUser.textContent = summary.bestUser;
+  countWeekTrips.textContent = summary.weekTrips;
+}
+
 async function loadColumnWidths() {
   const ref = doc(db, "settings", "tableConfig");
   const snap = await getDoc(ref);
@@ -167,7 +257,7 @@ btnApply.addEventListener("click", () => {
 });
 
 // --- Add Row ---
-async function addEditableRow(docId = null, data = {}) {
+async function addEditableRow(docId = null, data = {}, insertTop = false) {
   const isAdmin = currentUser.role === "admin";
   const isViewer = currentUser.role === "viewer";
   const isMine = data.createdBy === currentUser.username || !data.createdBy;
@@ -222,7 +312,11 @@ async function addEditableRow(docId = null, data = {}) {
     tr.children[8].appendChild(delBtn);
   }
 
-  tbody.appendChild(tr);
+  if (insertTop) {
+    tbody.prepend(tr);
+  } else {
+    tbody.appendChild(tr);
+  }
 
   const tripComplete = data.date && data.startTime && data.startMeter !== null &&
                        data.endTime && data.endMeter !== null &&
@@ -299,32 +393,40 @@ function lockRow(tr) {
 // --- Load Trips with filters ---
 async function loadTrips() {
   tbody.innerHTML = "";
-  const qAll = query(collection(db, "trips"), orderBy("date", "asc"));
+  const qAll = query(collection(db, "trips"), orderBy("createdAt", "desc"));
   const snap = await getDocs(qAll);
 
   const start = filterStart.value;
   const end = filterEnd.value;
   const search = searchLocation.value.toLowerCase();
+  const searchByUser = (searchUser?.value || "").toLowerCase();
+
+  currentFilteredTrips = [];
 
   snap.forEach(d => {
     const row = d.data();
     if (start && row.date < start) return;
     if (end && row.date > end) return;
-    if (search && !row.locations.some(l => l.toLowerCase().includes(search))) return;
+    if (search && !((row.locations || []).some(l => l.toLowerCase().includes(search)))) return;
+    if (searchByUser && !(row.createdBy || "").toLowerCase().includes(searchByUser)) return;
+    currentFilteredTrips.push({ id: d.id, ...row });
     addEditableRow(d.id, row);
   });
+
+  updateDashboardSummary(currentFilteredTrips);
 }
 
 // --- Export (Excel) ---
-btnExport.addEventListener("click", async () => {
-  const qAll = query(collection(db, "trips"), orderBy("date", "asc"));
-  const snap = await getDocs(qAll);
+btnExport.addEventListener("click", async () => exportTrips(false));
+btnExportFiltered.addEventListener("click", async () => exportTrips(true));
 
+async function exportTrips(filteredOnly = false) {
   const rows = [];
   rows.push(["Date", "Start Time", "End Time", "Start Meter", "End Meter", "Total Meter", "Locations", "Created By"]);
 
-  snap.forEach(docSnap => {
-    const d = docSnap.data();
+  const trips = filteredOnly ? currentFilteredTrips : (await getDocs(query(collection(db, "trips"), orderBy("date", "asc")))).docs.map(d => d.data());
+
+  trips.forEach(d => {
     rows.push([
       d.date || "",
       d.startTime || "",
@@ -340,8 +442,9 @@ btnExport.addEventListener("click", async () => {
   const ws = XLSX.utils.aoa_to_sheet(rows);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Trip Log");
-  XLSX.writeFile(wb, "Trip_Log.xlsx");
-});
+  const fileName = filteredOnly ? "Filtered_Trip_Log.xlsx" : "Trip_Log.xlsx";
+  XLSX.writeFile(wb, fileName);
+}
 
 // --- Sign out ---
 btnSignOut.addEventListener("click", () => {
@@ -357,6 +460,16 @@ initUser();
 loadLocations().then(() => {
   loadColumnWidths().then(loadTrips);
 });
-btnAddRow.addEventListener("click", () => addEditableRow());
-btnFilterDate.addEventListener("click", loadTrips);
+btnAddRow.addEventListener("click", () => addEditableRow(null, {}, true));
+btnFilterDate.addEventListener("click", () => {
+  loadTrips();
+});
+btnClearFilters.addEventListener("click", () => {
+  filterStart.value = "";
+  filterEnd.value = "";
+  searchLocation.value = "";
+  searchUser.value = "";
+  loadTrips();
+});
 btnSearchLoc.addEventListener("click", loadTrips);
+searchUser.addEventListener("input", loadTrips);

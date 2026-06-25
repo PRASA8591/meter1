@@ -17,6 +17,10 @@ const btnDashboard = document.getElementById("btnDashboard");
 const btnSignOut = document.getElementById("btnSignOut");
 const btnRefreshAdmin = document.getElementById("btnRefreshAdmin");
 const btnExportTrips = document.getElementById("btnExportTrips");
+const btnExportUsers = document.getElementById("btnExportUsers");
+const btnExportLocations = document.getElementById("btnExportLocations");
+const deleteTripsBeforeDate = document.getElementById("deleteTripsBeforeDate");
+const btnDeleteOldTrips = document.getElementById("btnDeleteOldTrips");
 const btnCreateUser = document.getElementById("btnCreateUser");
 const newUsername = document.getElementById("newUsername");
 const newPassword = document.getElementById("newPassword");
@@ -41,6 +45,8 @@ const countTrips = document.getElementById("countTrips");
 const countMeters = document.getElementById("countMeters");
 const countAvgMeter = document.getElementById("countAvgMeter");
 const countLocationsUsed = document.getElementById("countLocationsUsed");
+const countAdmins = document.getElementById("countAdmins");
+const countViewers = document.getElementById("countViewers");
 const filteredTripCount = document.getElementById("filteredTripCount");
 const filteredTripMeters = document.getElementById("filteredTripMeters");
 const filterUserRole = document.getElementById("filterUserRole");
@@ -100,12 +106,17 @@ async function loadSummary() {
   const avgMeter = trips.length ? Math.round(totalMeters / trips.length) : 0;
   const uniqueLocations = new Set(trips.flatMap(trip => (trip.locations || []).map(name => name.trim()).filter(Boolean)));
 
+  const adminCount = usersSnap.docs.filter(docSnap => docSnap.data().role === "admin").length;
+  const viewerCount = usersSnap.docs.filter(docSnap => docSnap.data().role === "viewer").length;
+
   countUsers.textContent = usersSnap.size;
   countLocations.textContent = locationsSnap.size;
   countTrips.textContent = tripsSnap.size;
   countMeters.textContent = totalMeters;
   countAvgMeter.textContent = avgMeter;
   countLocationsUsed.textContent = uniqueLocations.size;
+  countAdmins.textContent = adminCount;
+  countViewers.textContent = viewerCount;
 }
 
 async function loadUsers() {
@@ -289,6 +300,53 @@ btnBulkAddLocations.addEventListener("click", async () => {
   alert(`${added} location(s) added.`);
 });
 
+async function exportUsers() {
+  const snap = await getDocs(query(collection(db, "users"), orderBy("username", "asc")));
+  const rows = [["Username", "Role", "Created At"]];
+  snap.forEach(docSnap => {
+    const user = docSnap.data();
+    rows.push([user.username || "", user.role || "", user.createdAt?.toDate?.()?.toISOString?.() || ""]);
+  });
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Users");
+  XLSX.writeFile(wb, "Admin_Users.xlsx");
+}
+
+async function exportLocations() {
+  const snap = await getDocs(query(collection(db, "locations"), orderBy("name", "asc")));
+  const rows = [["Location Name", "Created At"]];
+  snap.forEach(docSnap => {
+    const location = docSnap.data();
+    rows.push([location.name || "", location.createdAt?.toDate?.()?.toISOString?.() || ""]);
+  });
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Locations");
+  XLSX.writeFile(wb, "Admin_Locations.xlsx");
+}
+
+async function deleteOldTrips() {
+  const dateValue = deleteTripsBeforeDate.value;
+  if (!dateValue) {
+    return alert("Select a date to delete trips before.");
+  }
+  showConfirm(`Delete all trips before ${dateValue}?`, async () => {
+    const snap = await getDocs(query(collection(db, "trips"), orderBy("date", "asc")));
+    const batchDeletes = [];
+    snap.forEach(docSnap => {
+      const trip = docSnap.data();
+      if (trip.date && trip.date < dateValue) {
+        batchDeletes.push(deleteDoc(doc(db, "trips", docSnap.id)));
+      }
+    });
+    await Promise.all(batchDeletes);
+    loadTrips();
+    loadSummary();
+    alert("Old trips deleted.");
+  });
+}
+
 searchUserAdmin.addEventListener("input", () => loadUsers());
 filterUserRole.addEventListener("change", () => loadUsers());
 searchLocationAdmin.addEventListener("input", () => loadLocations());
@@ -391,6 +449,9 @@ async function exportTrips(filteredOnly = false) {
 
 btnExportTrips.addEventListener("click", () => exportTrips(false));
 btnExportFilteredTrips.addEventListener("click", () => exportTrips(true));
+btnExportUsers.addEventListener("click", exportUsers);
+btnExportLocations.addEventListener("click", exportLocations);
+btnDeleteOldTrips.addEventListener("click", deleteOldTrips);
 
 function closeTripEditModal() {
   tripEditModal.classList.add("hidden");
