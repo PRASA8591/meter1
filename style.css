@@ -522,22 +522,79 @@ body {
   border-radius: 6px;
 }
 
-.admin-row button.create {
-  padding: 10px 16px;
-  background: #43a047;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-}
+  .admin-row button.create,
+  .admin-row button {
+    padding: 10px 16px;
+    background: #43a047;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+  }
 
-.admin-row button.create:hover {
-  background: #2e7d32;
-}
+  .admin-row button:hover,
+  .admin-table button:hover {
+    opacity: 0.95;
+  }
 
-.admin-table {
-  width: 100%;
-  border-collapse: collapse;
+  .admin-stats-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .trip-stat {
+    flex: 1;
+    min-width: 180px;
+    padding: 12px 14px;
+    background: #e3f2fd;
+    border-radius: 10px;
+    color: #0d47a1;
+    font-weight: 600;
+  }
+
+  #tripEditModal .modal-body {
+    display: grid;
+    gap: 12px;
+  }
+
+  #tripEditModal .modal-body label {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 14px;
+    color: #333;
+  }
+
+  #tripEditModal .modal-body input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+  }
+
+  #tripEditModal .modal-actions {
+    margin-top: 16px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+  }
+
+  #tripEditModal .modal-actions button {
+    padding: 10px 16px;
+    border-radius: 6px;
+  }
+
+  #tripEditModal #cancelTripEdit {
+    background: #e53935;
+    color: white;
+  }
+
+  .admin-table button.editTrip {
+    background: #1e88e5;
+    color: white;
+    margin-right: 6px;
   margin-top: 10px;
 }
 

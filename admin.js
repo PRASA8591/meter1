@@ -32,16 +32,36 @@ const searchTripLocation = document.getElementById("searchTripLocation");
 const filterTripStart = document.getElementById("filterTripStart");
 const filterTripEnd = document.getElementById("filterTripEnd");
 const btnFilterTrips = document.getElementById("btnFilterTrips");
+const btnClearTripFilters = document.getElementById("btnClearTripFilters");
+const btnExportFilteredTrips = document.getElementById("btnExportFilteredTrips");
 const tripsTable = document.getElementById("tripsTable");
 const countUsers = document.getElementById("countUsers");
 const countLocations = document.getElementById("countLocations");
 const countTrips = document.getElementById("countTrips");
 const countMeters = document.getElementById("countMeters");
+const countAvgMeter = document.getElementById("countAvgMeter");
+const countLocationsUsed = document.getElementById("countLocationsUsed");
+const filteredTripCount = document.getElementById("filteredTripCount");
+const filteredTripMeters = document.getElementById("filteredTripMeters");
+const filterUserRole = document.getElementById("filterUserRole");
+const bulkLocations = document.getElementById("bulkLocations");
+const btnBulkAddLocations = document.getElementById("btnBulkAddLocations");
+const tripEditModal = document.getElementById("tripEditModal");
+const editTripDate = document.getElementById("editTripDate");
+const editTripStartTime = document.getElementById("editTripStartTime");
+const editTripStartMeter = document.getElementById("editTripStartMeter");
+const editTripEndTime = document.getElementById("editTripEndTime");
+const editTripEndMeter = document.getElementById("editTripEndMeter");
+const editTripLocations = document.getElementById("editTripLocations");
+const editTripCreatedBy = document.getElementById("editTripCreatedBy");
+const saveTripEdit = document.getElementById("saveTripEdit");
+const cancelTripEdit = document.getElementById("cancelTripEdit");
 const confirmModal = document.getElementById("confirmModal");
 const confirmMsg = document.getElementById("confirmMsg");
 const confirmYes = document.getElementById("confirmYes");
 const confirmNo = document.getElementById("confirmNo");
 let deleteCallback = null;
+let currentTripEditId = null;
 
 function initUser() {
   const role = localStorage.getItem("userRole");
@@ -75,22 +95,29 @@ async function loadSummary() {
     getDocs(collection(db, "trips"))
   ]);
 
-  const totalMeters = tripsSnap.docs.reduce((sum, d) => sum + (Number(d.data().totalMeter) || 0), 0);
+  const trips = tripsSnap.docs.map(d => d.data());
+  const totalMeters = trips.reduce((sum, trip) => sum + (Number(trip.totalMeter) || 0), 0);
+  const avgMeter = trips.length ? Math.round(totalMeters / trips.length) : 0;
+  const uniqueLocations = new Set(trips.flatMap(trip => (trip.locations || []).map(name => name.trim()).filter(Boolean)));
 
   countUsers.textContent = usersSnap.size;
   countLocations.textContent = locationsSnap.size;
   countTrips.textContent = tripsSnap.size;
   countMeters.textContent = totalMeters;
+  countAvgMeter.textContent = avgMeter;
+  countLocationsUsed.textContent = uniqueLocations.size;
 }
 
 async function loadUsers() {
   usersTable.innerHTML = "";
   const term = searchUserAdmin.value.trim().toLowerCase();
+  const selectedRole = filterUserRole.value;
   const snap = await getDocs(query(collection(db, "users"), orderBy("username", "asc")));
 
   snap.forEach((docSnap) => {
     const user = docSnap.data();
     if (term && !user.username.toLowerCase().includes(term)) return;
+    if (selectedRole && user.role !== selectedRole) return;
 
     const tr = document.createElement("tr");
     tr.dataset.id = docSnap.id;
@@ -232,38 +259,88 @@ btnCreateLocation.addEventListener("click", async () => {
   loadSummary();
 });
 
+btnBulkAddLocations.addEventListener("click", async () => {
+  const raw = bulkLocations.value.trim();
+  if (!raw) {
+    return alert("Enter at least one location name.");
+  }
+
+  const names = Array.from(new Set(raw.split(",").map(item => item.trim()).filter(Boolean)));
+  if (!names.length) {
+    return alert("Enter valid location names.");
+  }
+
+  const existingSnap = await getDocs(collection(db, "locations"));
+  const existingNames = new Set(existingSnap.docs.map(d => (d.data().name || "").toLowerCase()));
+  let added = 0;
+
+  for (const name of names) {
+    if (existingNames.has(name.toLowerCase())) continue;
+    await addDoc(collection(db, "locations"), {
+      name,
+      createdAt: serverTimestamp()
+    });
+    added += 1;
+  }
+
+  bulkLocations.value = "";
+  loadLocations();
+  loadSummary();
+  alert(`${added} location(s) added.`);
+});
+
 searchUserAdmin.addEventListener("input", () => loadUsers());
+filterUserRole.addEventListener("change", () => loadUsers());
 searchLocationAdmin.addEventListener("input", () => loadLocations());
 
-async function loadTrips() {
-  tripsTable.innerHTML = "";
+function matchesTripFilters(trip) {
   const userTerm = filterTripUser.value.trim().toLowerCase();
   const locationTerm = searchTripLocation.value.trim().toLowerCase();
   const start = filterTripStart.value;
   const end = filterTripEnd.value;
 
+  if (userTerm && !(trip.createdBy || "").toLowerCase().includes(userTerm)) return false;
+  if (locationTerm && !((trip.locations || []).some(loc => loc.toLowerCase().includes(locationTerm)))) return false;
+  if (start && trip.date < start) return false;
+  if (end && trip.date > end) return false;
+  return true;
+}
+
+function updateTripFilterStats(count, totalMeters) {
+  filteredTripCount.textContent = `Showing ${count} trip(s)`;
+  filteredTripMeters.textContent = `${totalMeters} total meters`;
+}
+
+async function loadTrips() {
+  tripsTable.innerHTML = "";
   const snap = await getDocs(query(collection(db, "trips"), orderBy("date", "desc")));
+  let visibleCount = 0;
+  let visibleMeters = 0;
 
   snap.forEach((docSnap) => {
     const trip = docSnap.data();
-    if (userTerm && !(trip.createdBy || "").toLowerCase().includes(userTerm)) return;
-    if (locationTerm && !((trip.locations || []).some(loc => loc.toLowerCase().includes(locationTerm)))) return;
-    if (start && trip.date < start) return;
-    if (end && trip.date > end) return;
+    if (!matchesTripFilters(trip)) return;
+
+    visibleCount += 1;
+    visibleMeters += Number(trip.totalMeter) || 0;
 
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td>${trip.date || ""}</td>
       <td>${trip.startTime || ""}</td>
-      <td>${trip.endTime || ""}</td>
       <td>${trip.startMeter ?? ""}</td>
+      <td>${trip.endTime || ""}</td>
       <td>${trip.endMeter ?? ""}</td>
       <td>${trip.totalMeter ?? ""}</td>
       <td>${(trip.locations || []).join(", ")}</td>
       <td>${trip.createdBy || ""}</td>
-      <td class="actions"><button class="deleteTrip">Delete</button></td>
+      <td class="actions">
+        <button class="editTrip">Edit</button>
+        <button class="deleteTrip">Delete</button>
+      </td>
     `;
 
+    tr.querySelector(".editTrip").addEventListener("click", () => openTripEditModal(docSnap.id, trip));
     tr.querySelector(".deleteTrip").addEventListener("click", () =>
       showConfirm("Delete this trip entry?", async () => {
         await deleteDoc(doc(db, "trips", docSnap.id));
@@ -274,16 +351,26 @@ async function loadTrips() {
 
     tripsTable.appendChild(tr);
   });
+
+  updateTripFilterStats(visibleCount, visibleMeters);
 }
 
 btnFilterTrips.addEventListener("click", loadTrips);
+btnClearTripFilters.addEventListener("click", () => {
+  filterTripUser.value = "";
+  searchTripLocation.value = "";
+  filterTripStart.value = "";
+  filterTripEnd.value = "";
+  loadTrips();
+});
 
-btnExportTrips.addEventListener("click", async () => {
+async function exportTrips(filteredOnly = false) {
   const snap = await getDocs(query(collection(db, "trips"), orderBy("date", "asc")));
   const rows = [["Date", "Start Time", "End Time", "Start Meter", "End Meter", "Total Meter", "Locations", "Created By"]];
 
   snap.forEach((docSnap) => {
     const trip = docSnap.data();
+    if (filteredOnly && !matchesTripFilters(trip)) return;
     rows.push([
       trip.date || "",
       trip.startTime || "",
@@ -299,7 +386,48 @@ btnExportTrips.addEventListener("click", async () => {
   const ws = XLSX.utils.aoa_to_sheet(rows);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Trip Log");
-  XLSX.writeFile(wb, "Admin_Trip_Log.xlsx");
+  XLSX.writeFile(wb, filteredOnly ? "Admin_Filtered_Trip_Log.xlsx" : "Admin_Trip_Log.xlsx");
+}
+
+btnExportTrips.addEventListener("click", () => exportTrips(false));
+btnExportFilteredTrips.addEventListener("click", () => exportTrips(true));
+
+function closeTripEditModal() {
+  tripEditModal.classList.add("hidden");
+  currentTripEditId = null;
+}
+
+function openTripEditModal(id, trip) {
+  currentTripEditId = id;
+  editTripDate.value = trip.date || "";
+  editTripStartTime.value = trip.startTime || "";
+  editTripStartMeter.value = trip.startMeter ?? "";
+  editTripEndTime.value = trip.endTime || "";
+  editTripEndMeter.value = trip.endMeter ?? "";
+  editTripLocations.value = (trip.locations || []).join(", ");
+  editTripCreatedBy.value = trip.createdBy || "";
+  tripEditModal.classList.remove("hidden");
+}
+
+cancelTripEdit.addEventListener("click", closeTripEditModal);
+
+saveTripEdit.addEventListener("click", async () => {
+  if (!currentTripEditId) return;
+  const payload = {
+    date: editTripDate.value,
+    startTime: editTripStartTime.value,
+    startMeter: editTripStartMeter.value ? Number(editTripStartMeter.value) : null,
+    endTime: editTripEndTime.value,
+    endMeter: editTripEndMeter.value ? Number(editTripEndMeter.value) : null,
+    locations: editTripLocations.value.split(",").map(item => item.trim()).filter(Boolean)
+  };
+  if (payload.startMeter !== null && payload.endMeter !== null) {
+    payload.totalMeter = payload.endMeter - payload.startMeter;
+  }
+  await updateDoc(doc(db, "trips", currentTripEditId), payload);
+  closeTripEditModal();
+  loadTrips();
+  loadSummary();
 });
 
 btnRefreshAdmin.addEventListener("click", () => {

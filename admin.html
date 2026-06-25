@@ -15,7 +15,8 @@
     <div class="actions">
       <button id="btnDashboard">⬅️ Dashboard</button>
       <button id="btnRefreshAdmin">Refresh</button>
-      <button id="btnExportTrips">Export Trips</button>
+      <button id="btnExportTrips">Export All Trips</button>
+      <button id="btnExportFilteredTrips">Export Filtered Trips</button>
       <button id="btnSignOut">Logout</button>
     </div>
   </div>
@@ -40,6 +41,14 @@
         <div class="card-label">Total Meter</div>
         <div id="countMeters" class="card-value">0</div>
       </div>
+      <div class="admin-card">
+        <div class="card-label">Avg Meter / Trip</div>
+        <div id="countAvgMeter" class="card-value">0</div>
+      </div>
+      <div class="admin-card">
+        <div class="card-label">Unique Locations</div>
+        <div id="countLocationsUsed" class="card-value">0</div>
+      </div>
     </div>
 
     <div class="admin-section">
@@ -57,6 +66,12 @@
 
       <div class="admin-row">
         <input type="text" id="searchUserAdmin" placeholder="Search users...">
+        <select id="filterUserRole">
+          <option value="">All Roles</option>
+          <option value="user">User</option>
+          <option value="admin">Admin</option>
+          <option value="viewer">Viewer</option>
+        </select>
       </div>
 
       <h4>Existing Users</h4>
@@ -81,6 +96,10 @@
       </div>
 
       <div class="admin-row">
+        <input type="text" id="bulkLocations" placeholder="Add locations, comma separated">
+        <button class="create" id="btnBulkAddLocations">Bulk Add</button>
+      </div>
+      <div class="admin-row">
         <input type="text" id="searchLocationAdmin" placeholder="Search locations...">
       </div>
 
@@ -104,6 +123,11 @@
         <input type="date" id="filterTripStart">
         <input type="date" id="filterTripEnd">
         <button class="create" id="btnFilterTrips">Apply Filters</button>
+        <button class="create" id="btnClearTripFilters">Clear Filters</button>
+      </div>
+      <div class="admin-row admin-stats-row">
+        <div id="filteredTripCount" class="trip-stat">Showing 0 trips</div>
+        <div id="filteredTripMeters" class="trip-stat">0 total meters</div>
       </div>
 
       <h4>Recent Trips</h4>
@@ -123,6 +147,25 @@
         </thead>
         <tbody id="tripsTable"></tbody>
       </table>
+    </div>
+  </div>
+
+  <div id="tripEditModal" class="modal hidden">
+    <div class="modal-content">
+      <h3>Edit Trip Entry</h3>
+      <div class="modal-body">
+        <label>Date <input type="date" id="editTripDate"></label>
+        <label>Start Time <input type="time" id="editTripStartTime"></label>
+        <label>Start Meter <input type="number" id="editTripStartMeter"></label>
+        <label>End Time <input type="time" id="editTripEndTime"></label>
+        <label>End Meter <input type="number" id="editTripEndMeter"></label>
+        <label>Locations <input type="text" id="editTripLocations" placeholder="Comma separated"></label>
+        <label>Created By <input type="text" id="editTripCreatedBy" readonly></label>
+      </div>
+      <div class="modal-actions">
+        <button class="create" id="saveTripEdit">Save</button>
+        <button id="cancelTripEdit">Cancel</button>
+      </div>
     </div>
   </div>
 
