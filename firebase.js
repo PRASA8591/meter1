@@ -1,15 +1,19 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-app.js";
-import { getFirestore } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-firestore.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
+import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-analytics.js";
+import { getFirestore } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyAX2CyUrlrVuB35HDNOntpBJ0-AkeUFzzM",
-  authDomain: "meter-691db.firebaseapp.com",
-  projectId: "meter-691db",
-  storageBucket: "meter-691db.firebasestorage.app",
-  messagingSenderId: "879229307920",
-  appId: "1:879229307920:web:c26141a942c54451d28e95"
+  apiKey: "AIzaSyCKECoalfADMZHMo6ccZzZ-w6DCUMusjsY",
+  authDomain: "meter-details-730a9.firebaseapp.com",
+  projectId: "meter-details-730a9",
+  storageBucket: "meter-details-730a9.firebasestorage.app",
+  messagingSenderId: "388802965013",
+  appId: "1:388802965013:web:fd11c361f0cbfb807ca81c",
+  measurementId: "G-6DP59Z3HC1"
 };
 
 const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
 const db = getFirestore(app);
-export { db };
+
+export { db, analytics };
